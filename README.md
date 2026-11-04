@@ -18,6 +18,8 @@ Three workspaces share one research engine and follow the decision loop from Gla
 | **Discover Professionals** | Describe a region and roles. Get a short list of named professionals supported by sources — never padded to the requested count. Open any result in Research Prospect. |
 | **Decision Desk** | Save, dismiss and compare up to 3 profiles side by side; inspect evidence; run more research; generate an editable email draft and a simulated Insightly note; record decisions. |
 
+| **Client Journey** | A simulated, connected client experience. **Client view:** branded welcome → short interest card → style questionnaire → consultation request → personal portal → order timeline → continuing relationship. **Andrew's workspace:** the same inquiry, organized as soon as it's sent, with an AI preparation brief, an editable personal message, and explicit decisions (approve a time, ask a question, record a preference, advance the order). A guided 11-step demo strip and **Reset journey** make it repeatable. |
+
 **Ask the AI** (a side panel on any brief or comparison) answers from the existing research only. When
 it can't, it says so and offers a bounded extra web search.
 
@@ -31,6 +33,21 @@ it can't, it says so and offers a bounded extra web search.
 | Failure | n/a | Shows the error with retry. **Never falls back to sample data.** |
 
 Demo and Live research are stored separately and never mixed on the desk.
+
+## Client Journey — what is real and what is simulated
+
+| | |
+| --- | --- |
+| **Live AI** (Live Mode only) | The consultation preparation brief and message draft: one structured OpenAI call (`/api/journey/brief`), **no web search**. Only the customer's answers and first name are sent — never email, phone or surname — and only after the customer agreed and Andrew confirms. Prices, measurements and availability are filtered out of the output. |
+| **Demo sample** | In Demo Mode the brief is built by simple rules from the answers and labeled "Sample response · not AI". |
+| **Simulated workflow** | Intake, appointment requests and approvals, order milestones, portal messages, past orders. Fictional customer, no real transactions — even in Live Mode. |
+| **Not connected (future)** | Calendar booking, deposits/payments, Insightly, Constant Contact, email/SMS delivery, client sign-in, a shared backend. |
+
+The journey state lives in this browser (`localStorage`), shared by both perspectives and across tabs
+of the same browser. Using it across separate devices would need a production backend. Milestone
+labels are in `lib/journey/milestones.ts` so they can be matched to Andrew's actual process. Researching
+a client's public background is a separate button that opens Research Prospect — it never runs
+automatically.
 
 ## Research architecture
 

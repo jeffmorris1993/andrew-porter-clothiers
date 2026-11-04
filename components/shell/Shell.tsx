@@ -13,6 +13,7 @@ const NAV = [
   { href: "/research", label: "Research Prospect", short: "Research" },
   { href: "/discover", label: "Discover Professionals", short: "Discover" },
   { href: "/desk", label: "Decision Desk", short: "Desk" },
+  { href: "/journey", label: "Client Journey", short: "Journey" },
 ];
 
 export interface ServerStatus {
