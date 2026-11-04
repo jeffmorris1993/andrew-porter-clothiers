@@ -26,7 +26,7 @@ const brief = await post("/api/research/brief", {
   input,
   candidate: id.candidates[0],
   identityStatus: id.status === "ambiguous" ? "selected-by-user" : "single-match",
-  identitySources: id.sources,
+  identitySources: id.sources.filter((s) => id.candidates[0].sourceIds.includes(s.id)),
   shareCustomerDetails: false,
 });
 console.log(`\n${brief.professionalProfile.name}: ${brief.professionalProfile.summary}\n`);

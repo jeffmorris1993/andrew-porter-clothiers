@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { POST as identifyPOST } from "@/app/api/research/identify/route";
 import { POST as discoverPOST } from "@/app/api/discover/route";
+import { POST as briefPOST } from "@/app/api/research/brief/route";
 import { OpenAIReasoningModel, OpenAIWebSearchProvider } from "@/lib/research/openai";
 import { setPipelineDepsForTests } from "@/lib/server/handler";
 import { fakeClient, structuredResponse, webSearchResponse } from "../fixtures/responses";
@@ -61,5 +62,29 @@ describe("API routes", () => {
     }
     expect(last!.status).toBe(429);
     expect(last!.headers.get("Retry-After")).toBeTruthy();
+  });
+
+  it("brief accepts a large identity source list and keeps only the chosen person's sources", async () => {
+    inject([
+      webSearchResponse([[{ url: "https://acme.com/team", title: "Team", text: "Jane Smith is CEO of Acme." }]]),
+      structuredResponse({
+        profile: { role: "CEO", organization: "Acme", location: null, summary: "Jane Smith is CEO of Acme." },
+        findings: [{ ref: "F1", claim: "CEO of Acme.", category: "role", sourceIds: ["S1"], conflicting: false, uncertaintyNote: null }],
+        missingInformation: [], preparationInsights: [], suggestedQuestions: [], actions: [],
+      }),
+    ]);
+    const identitySources = Array.from({ length: 60 }, (_, i) => ({
+      id: `S${i + 1}`, url: `https://site${i + 1}.example.org/page`, title: `Page ${i + 1}`, retrievedAt: "2026-11-04T00:00:00Z", cited: i < 2,
+    }));
+    const candidate = { id: "c1", name: "Jane Smith", role: "CEO", organization: "Acme", distinguishingDetails: [], sourceIds: ["S1", "S2"] };
+    const res = await briefPOST(
+      req({ input: { fullName: "Jane Smith" }, candidate, identityStatus: "single-match", identitySources, shareCustomerDetails: false }, "6.6.6.6"),
+    );
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    const urls: string[] = json.sources.map((s: { url: string }) => s.url);
+    expect(urls).toContain("https://site1.example.org/page");
+    expect(urls).toContain("https://site2.example.org/page");
+    expect(urls.filter((u) => /site\d+\.example\.org/.test(u) && !/site[12]\./.test(u))).toEqual([]);
   });
 });

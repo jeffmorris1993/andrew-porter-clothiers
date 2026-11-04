@@ -235,8 +235,9 @@ export const BriefRequestSchema = z.object({
   shareCustomerDetails: z.boolean().default(false),
   candidate: IdentityCandidateSchema,
   identityStatus: z.enum(["single-match", "selected-by-user"]),
-  /** Sources from the identification step, so candidate source ids stay valid */
-  identitySources: z.array(ResearchSourceSchema).max(40),
+  /** Sources from the identification step, so candidate source ids stay valid.
+      The browser sends only the candidate's own; the cap is generous for older open tabs. */
+  identitySources: z.array(ResearchSourceSchema).max(100),
 });
 
 export const FollowupRequestSchema = z.object({

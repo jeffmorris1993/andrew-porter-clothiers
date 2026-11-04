@@ -33,7 +33,8 @@ export function useResearch() {
           input,
           candidate,
           identityStatus,
-          identitySources,
+          // Only the sources behind the chosen person are needed (searches can return 40+ pages).
+          identitySources: identitySources.filter((src) => candidate.sourceIds.includes(src.id)),
           shareCustomerDetails: share,
         });
         putBrief(brief);

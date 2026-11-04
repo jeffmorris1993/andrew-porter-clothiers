@@ -115,3 +115,22 @@ test("demo and live desks are kept apart", async ({ page }) => {
   await page.getByRole("radio", { name: "Demo" }).click();
   await expect(page.getByTestId("saved-item")).toHaveCount(3);
 });
+
+test("a search with many sources still produces a brief (only the person's sources are sent)", async ({ page }) => {
+  const many = Array.from({ length: 50 }, (_, i) => ({
+    id: `S${i + 1}`, url: `https://site${i + 1}.example.org/p`, title: `Page ${i + 1}`, publisher: `site${i + 1}.example.org`,
+    retrievedAt: "2026-11-04T12:00:00Z", cited: false,
+  }));
+  let sentIds: string[] = [];
+  await page.route("**/api/research/identify", (r) =>
+    r.fulfill({ json: { status: "single-match", candidates: [{ ...candidate, sourceIds: ["S1", "S7"] }], sources: many, mode: "live", usage } }),
+  );
+  await page.route("**/api/research/brief", (r) => {
+    sentIds = (r.request().postDataJSON().identitySources as { id: string }[]).map((x) => x.id);
+    return r.fulfill({ json: brief });
+  });
+  await page.getByLabel(/Full name/).fill("Jane Smith");
+  await page.getByRole("button", { name: /Research with live web search/ }).click();
+  await expect(page.getByTestId("brief").getByRole("heading", { name: "Jane Smith" })).toBeVisible();
+  expect(sentIds).toEqual(["S1", "S7"]);
+});
