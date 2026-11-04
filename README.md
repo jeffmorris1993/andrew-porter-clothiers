@@ -1,36 +1,108 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Client Intelligence Desk
 
-## Getting Started
+**AI-assisted prospect research and decision support for Andrew Porter Fine Clothiers.**
+A concept demo by Sirrom Studios.
 
-First, run the development server:
+> This demo shows how AI can reduce research and preparation time. It does not promise new
+> customers or sales. It never contacts anyone, never changes a CRM, and leaves every decision
+> to Andrew.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## What it does
+
+Three workspaces share one research engine and follow the decision loop from Glam District:
+**Observe → Investigate → Explore → Compare → Decide.**
+
+| Workspace | What Andrew does |
+| --- | --- |
+| **Research Prospect** | Enter a name (plus optional company, region and interest-card details). The desk identifies the person (asking Andrew to choose if several people share the name), researches their public professional background, and produces a brief: overview, AI summary, source-linked findings, customer-provided info (kept separate), gaps, preparation insights and 2–3 next-step options. |
+| **Discover Professionals** | Describe a region and roles. Get a short list of named professionals supported by sources — never padded to the requested count. Open any result in Research Prospect. |
+| **Decision Desk** | Save, dismiss and compare up to 3 profiles side by side; inspect evidence; run more research; generate an editable email draft and a simulated Insightly note; record decisions. |
+
+**Ask the AI** (a side panel on any brief or comparison) answers from the existing research only. When
+it can't, it says so and offers a bounded extra web search.
+
+## Demo Mode and Live Mode
+
+| | Demo Mode | Live Mode |
+| --- | --- | --- |
+| Data | Fictional people, companies and `.example` sources | Real OpenAI Responses API + `web_search` |
+| Needs a key | No | `OPENAI_API_KEY` on the server |
+| Labeling | Brass "Sample data" banner and tags throughout | Navy "Live" banner, real citation links, usage readout |
+| Failure | n/a | Shows the error with retry. **Never falls back to sample data.** |
+
+Demo and Live research are stored separately and never mixed on the desk.
+
+## Research architecture
+
+```
+Browser ── ResearchClient (lib/client/api.ts) ─┬─ demoClient → lib/demo (fixtures, rule-based)
+                                               └─ liveClient → /api/* routes (server only)
+/api/* ── liveRoute wrapper (lib/server/handler.ts): Zod validation · rate limit · daily cap · usage log · typed errors
+       └─ pipeline (lib/research/pipeline.ts)
+            1. Search               EvidenceProvider.gather   → OpenAI web_search (lib/research/openai.ts)
+            2. Identity resolution  identify()                → candidates; Andrew picks if > 1
+            3. Evidence + verify    SourceRegistry            → ids for real cited/consulted URLs only
+            4. Structured synthesis ReasoningModel.structured → zod structured output, no tools
+            5. Next-step options    validated in code         → requiresHumanApproval: true
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Key rules enforced **in code**, not just in prompts:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- **Sources come only from the web search tool** — `url_citation` annotations and
+  `web_search_call.action.sources`. The model refers to sources by server-assigned ids (`S1`…);
+  unknown ids are dropped. No URL is ever taken from model text.
+- **Verification status is computed**, not generated: `corroborated` (≥2 independent domains),
+  `single-source`, `conflicting` (sources disagree), `unverified` (no valid source).
+- **Restricted sites are excluded** (LinkedIn, social media, people-search and property sites) and the
+  brief says so.
+- **Safety filter** removes statements about income, net worth, compensation, home value,
+  protected characteristics, and personal contact or address details.
+- **Customer-provided details** are shown separately and sent to the AI **only** if Andrew ticks the
+  consent box in Live Mode.
+- **Web content is untrusted**: research notes are passed to the synthesis step wrapped and labeled
+  as data.
+- **Bounded**: each request makes a fixed number of model calls (identify 2, brief 2, follow-up 2,
+  discover 2, assistant 1, draft 1).
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The provider interfaces in `lib/research/provider.ts` let other data sources be added later without
+changing the pipeline or UI. Persistence goes through `lib/store/repository.ts` (localStorage today; a
+Supabase repository can implement the same interface).
 
-## Learn More
+## Running it
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+npm install
+cp .env.example .env.local   # add OPENAI_API_KEY for Live Mode
+npm run dev
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Open http://localhost:3000. Demo Mode works with no key.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Tests
 
-## Deploy on Vercel
+```bash
+npm test            # unit + mocked integration (Vitest)
+npm run test:e2e    # browser E2E (Playwright; run `npm run build` first)
+npm run smoke:live -- "David A. Ricks" "Eli Lilly and Company"   # real API calls against a running server
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Cost monitoring
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Every live response includes model, call count, web-search count and token usage, shown under
+each result. The server also logs a `[usage]` line per request (visible in Vercel logs) and exposes a
+per-instance summary at `GET /api/usage`. Rate limits and the daily cap are set in `.env`.
+
+### Deploying to Vercel
+
+Import the repo, set `OPENAI_API_KEY` (and optionally `OPENAI_MODEL`) as environment variables,
+and deploy. Research routes set `maxDuration` up to 180s. Rate limiting and usage tracking are
+in-memory per instance — fine for a demo; use a shared store for production.
+
+## Privacy and safety
+
+- No inference of income, net worth, home value or purchasing power.
+- No use of race, religion, ethnicity or other protected characteristics.
+- No residential addresses or private contact details.
+- No automated emails, texts or calls. Drafts are editable text for Andrew to copy if he chooses.
+- No real CRM changes — the Insightly note is simulated.
+- Do not enter real customer records in Live Mode without appropriate authorization.
