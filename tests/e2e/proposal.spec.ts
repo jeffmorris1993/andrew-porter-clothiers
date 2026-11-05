@@ -112,7 +112,7 @@ test("starter pilot: one pilot at a time, details, conversion and Page 1", async
   await page.getByRole("button", { name: "View Client Proposal" }).click();
   const sheet = page.locator(".pv").getByTestId("proposal-sheet");
   await expect(sheet.getByTestId("pp-pilots")).toContainText("Start Small. Prove the Value.");
-  await expect(sheet.locator(".pp-pilot.on")).toContainText("Client Journey Live Pilot");
+  await expect(sheet.getByTestId("pp-pilots")).toContainText("Client Journey Live Pilot");
   const inv = sheet.getByTestId("pilot-investment");
   await expect(inv).toContainText("No automatic monthly subscription");
   await expect(inv).toContainText("$3,500");
@@ -156,4 +156,40 @@ test("pilot PDF export is a single page with the selected pilot", async ({ page,
   await expect(page.locator(".print-root").getByTestId("pilot-investment")).toContainText("Discover Professionals Pilot");
   const pdf = await page.pdf({ format: "Letter", printBackground: true });
   expect((pdf.toString("latin1").match(/\/Type\s*\/Page[^s]/g) || []).length).toBe(1);
+});
+
+test("Page 1 shows only what was chosen in the configuration", async ({ page }) => {
+  const sheet = () => page.locator(".pv").getByTestId("proposal-sheet");
+  const view = () => page.getByRole("button", { name: "View Client Proposal" }).click();
+  const back = () => page.getByRole("button", { name: "← Configure" }).click();
+
+  // Modular: only the selected module, no pilot or partnership.
+  await page.getByRole("switch", { name: "Select Research Prospect" }).click();
+  await view();
+  await expect(sheet().locator(".pp-mod")).toHaveCount(1);
+  await expect(sheet().locator(".pp-table tbody tr")).toHaveCount(1);
+  await expect(sheet()).not.toContainText("Discover Professionals");
+  await expect(sheet()).not.toContainText("Start Small");
+  await expect(sheet()).not.toContainText("Sirrom AI Technology Partnership");
+  await expect(sheet()).not.toContainText("Bundle Savings");
+  await back();
+
+  // Starter Pilot: only the chosen pilot.
+  await page.getByRole("radio", { name: /Starter Pilot/ }).click();
+  await page.getByRole("radiogroup", { name: "Starter Pilot" }).getByRole("radio", { name: /Discover Professionals/ }).click();
+  await view();
+  await expect(sheet().getByTestId("pp-pilots")).toContainText("Discover Professionals Pilot");
+  await expect(sheet()).not.toContainText("Research Prospect Pilot");
+  await expect(sheet()).not.toContainText("Client Journey Live Pilot");
+  await expect(sheet().locator(".pp-table")).toHaveCount(0);
+  await expect(sheet()).not.toContainText("Sirrom AI Technology Partnership");
+  await back();
+
+  // Partnership: partnership and its included modules, no module pricing or pilots.
+  await page.getByRole("radio", { name: /AI Technology Partnership/ }).click();
+  await view();
+  await expect(sheet().locator(".pp-partner")).toBeVisible();
+  await expect(sheet().locator(".pp-mod")).toHaveCount(3);
+  await expect(sheet().locator(".pp-table")).toHaveCount(0);
+  await expect(sheet()).not.toContainText("Start Small");
 });

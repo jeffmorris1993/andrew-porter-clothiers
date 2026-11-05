@@ -195,43 +195,31 @@ html,body,.ap-root{background:#fff!important;width:8.5in}
 }
 
 /* ---------- Starter Pilot (added) ---------- */
-/* Page 1: tighter rhythm so the extra section still fits one US Letter page. */
-.pp-sheet{gap:8px;padding:28px 54px 20px}
-.pp-head{padding-bottom:9px}
-.pp-title{gap:3px}
-.pp-title h1{font-size:36px}
-.pp-sub{font-size:13px}
-.pp-sec{margin-bottom:6px}
-.pp-mod{padding:10px 12px 9px;gap:3px}
-.pp-mod h3{font-size:17px}
-.pp-mod p{font-size:9.8px;line-height:1.38}
-.pp-table td{padding:4px 10px}
-.pp-table th{padding-bottom:5px}
-.pp-t-name{font-size:14.5px}
-.pp-t-price b{font-size:16px}
-.pp-t-foot{margin-top:3px!important}
-.pp-row{gap:18px}
-.pp-bundle{gap:6px}
-.pp-b-item{padding:7px 12px}
-.pp-b-v{font-size:14.5px}
-.pp-partner{padding:11px 16px 10px;gap:4px}
-.pp-partner h2{font-size:18px}
-.pp-p-price{font-size:24px}
-.pp-partner ul{gap:1px 14px}
-.pp-partner li{font-size:9px;line-height:1.3}
-.pp-p-req{padding-top:5px!important;font-size:9px}
-.pp-pilot-intro{font:400 10.5px/1.35 var(--sans);color:var(--ink);margin:-2px 0 6px!important}
-.pp-pilots{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
-.pp-pilot{position:relative;padding:7px 11px 7px;border:1px solid var(--rule);background:var(--paper);display:flex;flex-direction:column;gap:1px}
-.pp-pilot.on{border-color:var(--gold);background:var(--gold-t)}
-.pp-pilot .pp-flag{position:absolute;top:7px;right:9px}
-.pp-pilot-name{font:600 14px/1.15 var(--serif);color:var(--navy);white-space:nowrap;padding-right:56px}
-.pp-pilot-price{font:600 16px/1.15 var(--serif);color:var(--navy);white-space:nowrap}
-.pp-pilot-price span{font:400 9.5px var(--sans);color:var(--muted)}
-.pp-pilot-price i{font:400 9px var(--sans);font-style:normal;color:var(--muted)}
-.pp-pilot-meta{font:400 9px/1.3 var(--sans);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pp-pilot-credit{font:500 9px/1.3 var(--sans);color:var(--gold-d)}
-.pp-pilot-fine{font:400 8.3px/1.35 var(--sans);color:var(--muted);margin-top:4px!important}
+/* Page 1 shows only the chosen model, so the original spacing is kept. */
+.pp-bundle .pp-b-item{max-width:420px}
+/* Size the investment to its content; the footer stays at the bottom of the sheet. */
+.pp-inv{flex:0 0 auto}
+.pp-inv-body,.pp-inv-empty{flex:none;padding:22px 18px}
+.pp-inv-empty{min-height:120px}
+.pp-foot{margin-top:auto}
+.pp-pilot-intro{font:400 12px/1.45 var(--sans);color:var(--ink);margin:-2px 0 10px!important}
+.pp-pilot-one{border:1px solid var(--gold);box-shadow:inset 0 2px 0 var(--gold);background:var(--paper);padding:16px 18px 14px;display:flex;flex-direction:column;gap:12px}
+.pp-pilot-one-hd{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
+.pp-pilot-one h3{font:600 22px/1.1 var(--serif);color:var(--navy)}
+.pp-pilot-one-price{font:600 30px/1 var(--serif);color:var(--navy);white-space:nowrap;text-align:right}
+.pp-pilot-one-price span{font:400 11px var(--sans);color:var(--muted)}
+.pp-pilot-one-price i{font:400 11px var(--sans);font-style:normal;color:var(--muted)}
+.pp-pilot-meta{font:400 10.5px/1.4 var(--sans);color:var(--muted);margin-top:3px}
+.pp-pilot-facts{display:grid;grid-template-columns:1fr 1fr;gap:14px;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);padding:9px 0}
+.pp-pilot-facts span{display:block;font:600 8.5px var(--sans);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:3px}
+.pp-pilot-facts b{font:500 14px/1.3 var(--serif);color:var(--navy)}
+.pp-pilot-lists{display:grid;grid-template-columns:1.4fr 1fr;gap:18px}
+.pp-pilot-lists ul{list-style:none;margin:0;padding:0;display:grid;gap:3px}
+.pp-pilot-lists li{font:400 10px/1.35 var(--sans);color:var(--ink);padding-left:11px;position:relative}
+.pp-pilot-lists li:before{content:"";position:absolute;left:0;top:5px;width:4px;height:4px;background:var(--gold);transform:rotate(45deg)}
+.pp-pilot-lists div:last-child li:before{background:var(--rule)}
+.pp-pilot-req{font:400 9.5px/1.45 var(--sans);color:var(--muted);background:var(--ivory2);padding:8px 10px}
+.pp-pilot-fine{font:400 9px/1.45 var(--sans);color:var(--muted);margin-top:7px!important}
 .pp-inv-detail{font:400 10px/1.4 var(--sans);color:var(--muted);padding-bottom:5px;border-bottom:1px solid var(--rule)}
 /* Page 2 */
 .cx-seg.three{grid-template-columns:repeat(3,minmax(0,1fr))}
