@@ -79,3 +79,81 @@ test("fits a phone screen @mobile", async ({ page }) => {
     expect(sw, hash || "calculator").toBeLessThanOrEqual(w);
   }
 });
+
+/* ── Starter Pilot ─────────────────────────────────────────────── */
+
+test("starter pilot: one pilot at a time, details, conversion and Page 1", async ({ page }) => {
+  await page.getByRole("radio", { name: /Starter Pilot/ }).click();
+  const picker = page.getByRole("radiogroup", { name: "Starter Pilot" });
+  await expect(picker.getByRole("radio", { checked: true })).toHaveCount(1);
+  await expect(page.getByTestId("pilot-detail")).toContainText("Research Prospect Pilot");
+  await expect(page.getByTestId("pilot-detail")).toContainText("No CRM integrations");
+  await expect(page.getByTestId("pilot-conversion")).toContainText("$1,500");
+
+  await picker.getByRole("radio", { name: /Client Journey/ }).click();
+  await expect(picker.getByRole("radio", { checked: true })).toHaveCount(1);
+  await expect(page.getByTestId("pilot-detail")).toContainText("Starting at");
+  await expect(page.getByTestId("pilot-prereqs")).toContainText("Customer data isolation");
+  const conv = page.getByTestId("pilot-conversion");
+  await expect(conv).toContainText("$5,000");
+  await expect(conv).toContainText("−$2,000");
+  await expect(conv).toContainText("$3,000");
+  await expect(conv).toContainText("$399/mo");
+  await expect(conv).toContainText("not due now");
+  await expect(summary(page)).toContainText("None");
+  // Module selection UI is hidden in pilot mode.
+  await expect(page.getByRole("switch", { name: "Select Research Prospect" })).toBeHidden();
+
+  // Adding a module later applies the bundle discount, then the credit once.
+  await conv.getByLabel("Research Prospect").check();
+  await expect(conv).toContainText("Bundle discount (10%)");
+  await expect(conv).toContainText("$4,300");
+
+  await page.getByRole("button", { name: "View Client Proposal" }).click();
+  const sheet = page.locator(".pv").getByTestId("proposal-sheet");
+  await expect(sheet.getByTestId("pp-pilots")).toContainText("Start Small. Prove the Value.");
+  await expect(sheet.locator(".pp-pilot.on")).toContainText("Client Journey Live Pilot");
+  const inv = sheet.getByTestId("pilot-investment");
+  await expect(inv).toContainText("No automatic monthly subscription");
+  await expect(inv).toContainText("$3,500");
+  await expect(inv).toContainText("45 days");
+  await expect(inv).toContainText("$2,000");
+  // The internal conversion figures stay off the client page.
+  await expect(sheet).not.toContainText("$4,300");
+  await expect(sheet).not.toContainText("Remaining setup");
+});
+
+test("editing pilot settings updates Page 1 immediately", async ({ page }) => {
+  await page.getByRole("radio", { name: /Starter Pilot/ }).click();
+  await page.getByRole("button", { name: "Advanced Pricing Settings" }).click();
+  await page.getByLabel("Pilot price").first().fill("900");
+  await page.getByLabel("Credit").first().fill("600");
+  await expect(page.getByTestId("pilot-conversion")).toContainText("$1,400");
+  await page.getByRole("button", { name: "View Client Proposal" }).click();
+  const inv = page.locator(".pv").getByTestId("pilot-investment");
+  await expect(inv).toContainText("$900");
+  await expect(inv).toContainText("$600");
+});
+
+test("Page 1 fits one letter page in every pricing model", async ({ page }) => {
+  const overflow = () => page.locator(".pv .pp-sheet").evaluate((s) => s.scrollHeight - s.clientHeight);
+  await page.getByRole("switch", { name: "Select Research Prospect" }).click();
+  await page.getByRole("switch", { name: "Select Discover Professionals" }).click();
+  for (const mode of [/Modular Implementation/, /Starter Pilot/, /AI Technology Partnership/]) {
+    await page.getByRole("radio", { name: mode }).click();
+    if (String(mode).includes("Starter")) await page.getByRole("radiogroup", { name: "Starter Pilot" }).getByRole("radio", { name: /Client Journey/ }).click();
+    await page.getByRole("button", { name: "View Client Proposal" }).click();
+    expect(await overflow(), String(mode)).toBeLessThanOrEqual(0);
+    await page.getByRole("button", { name: "← Configure" }).click();
+  }
+});
+
+test("pilot PDF export is a single page with the selected pilot", async ({ page, browserName }) => {
+  test.skip(browserName !== "chromium");
+  await page.getByRole("radio", { name: /Starter Pilot/ }).click();
+  await page.getByRole("radiogroup", { name: "Starter Pilot" }).getByRole("radio", { name: /Discover Professionals/ }).click();
+  await page.emulateMedia({ media: "print" });
+  await expect(page.locator(".print-root").getByTestId("pilot-investment")).toContainText("Discover Professionals Pilot");
+  const pdf = await page.pdf({ format: "Letter", printBackground: true });
+  expect((pdf.toString("latin1").match(/\/Type\s*\/Page[^s]/g) || []).length).toBe(1);
+});

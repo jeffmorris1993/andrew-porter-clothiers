@@ -23,6 +23,7 @@ import {
   type Pricing,
   type Quote,
 } from "@/lib/proposal/pricing";
+import { PilotConversion, PilotPicker, PilotSettings, PilotSummary } from "./PilotPanels";
 import { SIRROM_LOGO } from "./ProposalSheet";
 
 function CXSwitch({ on, onChange, label }: { on: boolean; onChange: (v: boolean) => void; label: string }) {
@@ -33,7 +34,7 @@ function CXSwitch({ on, onChange, label }: { on: boolean; onChange: (v: boolean)
   );
 }
 
-function CXNumber({
+export function CXNumber({
   value,
   onChange,
   prefix,
@@ -67,22 +68,25 @@ function CXNumber({
   );
 }
 
-function CXModuleCard({
+export function CXModuleCard({
   m,
   ms,
   P,
   partner,
   setModule,
+  conversion = false,
 }: {
   m: ApModule;
   ms: ModuleSel;
   P: Pricing;
   partner: boolean;
   setModule: (id: ModuleId, patch: Partial<ModuleSel>) => void;
+  /** Starter Pilot conversion: usage only, no on/off switch. */
+  conversion?: boolean;
 }) {
   const u = apNum(ms.usage);
   const tier = apTier(u, m.limits);
-  const active = partner || ms.on;
+  const active = partner || ms.on || conversion;
   const set = (v: Num | string) => setModule(m.id, { usage: v === "" ? "" : Math.max(0, Math.round(Number(v))) });
   let status: React.ReactNode;
   if (partner) {
@@ -103,7 +107,7 @@ function CXModuleCard({
   } else {
     status = (
       <div className="cx-status">
-        <b>{AP_TIER_LABEL[tier]}</b> · {apFmt(apNum(P[m.id][tier]))}/mo{ms.on ? "" : " (not selected)"}
+        <b>{AP_TIER_LABEL[tier]}</b> · {apFmt(apNum(P[m.id][tier]))}/mo{ms.on || conversion ? "" : " (not selected)"}
       </div>
     );
   }
@@ -112,11 +116,13 @@ function CXModuleCard({
       <div className="cx-mod-head">
         {partner ? (
           <span className="cx-incl">Included</span>
+        ) : conversion ? (
+          <span className="cx-incl">After the pilot</span>
         ) : (
           <CXSwitch on={ms.on} label={"Select " + m.name} onChange={(v) => setModule(m.id, { on: v })} />
         )}
         <div className="cx-mod-name">{m.name}</div>
-        <div className="cx-mod-setup">{partner ? "No setup fee" : `Setup ${apFmt(apNum(P[m.id].setup))}`}</div>
+        <div className="cx-mod-setup">{partner ? "No setup fee" : `${conversion ? "Standard setup" : "Setup"} ${apFmt(apNum(P[m.id].setup))}`}</div>
       </div>
       <div className="cx-mod-body">
         <div className="cx-q">{m.question}</div>
@@ -149,7 +155,7 @@ function CXModuleCard({
   );
 }
 
-function CXRow({ k, v, strong, minus }: { k: string; v: string; strong?: boolean; minus?: boolean }) {
+export function CXRow({ k, v, strong, minus }: { k: string; v: string; strong?: boolean; minus?: boolean }) {
   return (
     <div className={"cx-row" + (strong ? " strong" : "")}>
       <span>{k}</span>
@@ -159,6 +165,7 @@ function CXRow({ k, v, strong, minus }: { k: string; v: string; strong?: boolean
 }
 
 function CXSummary({ quote, P }: { quote: Quote; P: Pricing }) {
+  if (quote.mode === "pilot") return <PilotSummary quote={quote} />;
   if (quote.mode === "partner") {
     return (
       <div className="cx-sum-body">
@@ -260,6 +267,7 @@ function CXAdvanced({ P, setPricing, onReset }: { P: Pricing; setPricing: (fn: (
               <CXNumber label="Partner retainer /mo" prefix="$" value={P.partner} onChange={(v) => setTop("partner", v)} />
             </div>
           </div>
+          <PilotSettings P={P} setPricing={setPricing} />
           <div className="cx-adv-foot">
             <button type="button" className="cx-btn ghost" onClick={onReset}>
               Reset to Default Pricing
@@ -286,6 +294,7 @@ export function CalculatorView({
 }) {
   const { sel, pricing: P } = state;
   const partner = sel.mode === "partner";
+  const pilot = sel.mode === "pilot";
   const [toast, setToast] = useState("");
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const flash = (t: string) => {
@@ -295,7 +304,7 @@ export function CalculatorView({
   };
   const setModule = (id: ModuleId, patch: Partial<ModuleSel>) =>
     setState((s) => ({ ...s, sel: { ...s.sel, modules: { ...s.sel.modules, [id]: { ...s.sel.modules[id], ...patch } } } }));
-  const setMode = (mode: "modular" | "partner") => setState((s) => ({ ...s, sel: { ...s.sel, mode } }));
+  const setMode = (mode: "modular" | "pilot" | "partner") => setState((s) => ({ ...s, sel: { ...s.sel, mode } }));
   const setPricing = (fn: (p: Pricing) => Pricing) => setState((s) => ({ ...s, pricing: fn(s.pricing) }));
   const copy = async () => {
     const text = apQuoteText(quote);
@@ -360,10 +369,20 @@ export function CalculatorView({
           <div className="cx-main">
             <section className="cx-sec">
               <div className="cx-sec-t">Pricing Model</div>
-              <div className="cx-seg" role="radiogroup" aria-label="Pricing model">
-                <button type="button" role="radio" aria-checked={!partner} className={!partner ? "on" : ""} onClick={() => setMode("modular")}>
-                  <b>Modular Pricing</b>
+              <div className="cx-seg three" role="radiogroup" aria-label="Pricing model">
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={sel.mode === "modular"}
+                  className={sel.mode === "modular" ? "on" : ""}
+                  onClick={() => setMode("modular")}
+                >
+                  <b>Modular Implementation</b>
                   <small>Select modules · setup + monthly by usage</small>
+                </button>
+                <button type="button" role="radio" aria-checked={pilot} className={pilot ? "on" : ""} onClick={() => setMode("pilot")}>
+                  <b>Starter Pilot</b>
+                  <small>One module · one-time fee · no subscription</small>
                 </button>
                 <button type="button" role="radio" aria-checked={partner} className={partner ? "on" : ""} onClick={() => setMode("partner")}>
                   <b>AI Technology Partnership</b>
@@ -372,7 +391,14 @@ export function CalculatorView({
               </div>
             </section>
 
-            <section className="cx-sec">
+            {quote.mode === "pilot" && (
+              <>
+                <PilotPicker state={state} setState={setState} quote={quote} />
+                <PilotConversion state={state} setState={setState} quote={quote} />
+              </>
+            )}
+
+            <section className="cx-sec" hidden={pilot}>
               <div className="cx-sec-t">{partner ? "Expected Monthly Usage" : "Select Modules & Expected Monthly Usage"}</div>
               {partner && (
                 <p className="cx-sec-note">
@@ -393,7 +419,7 @@ export function CalculatorView({
             <section className="cx-sum" data-testid="quote-summary">
               <div className="cx-sum-head">
                 <span className="cx-sec-t">Live Quote Summary</span>
-                <span className="cx-sum-mode">{partner ? "Partnership" : "Modular"}</span>
+                <span className="cx-sum-mode">{partner ? "Partnership" : pilot ? "Starter Pilot" : "Modular"}</span>
               </div>
               <CXSummary quote={quote} P={P} />
             </section>

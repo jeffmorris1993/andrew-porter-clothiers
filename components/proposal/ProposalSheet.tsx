@@ -3,7 +3,18 @@
 /* Port of ap-proposal.jsx — the one-page client proposal (Page 1). */
 
 import { useEffect, useRef, useState } from "react";
-import { AP_MODULES, AP_TIERS, AP_TIER_LABEL, apFmt, apNum, type ModuleId, type Pricing, type Quote, type Tier } from "@/lib/proposal/pricing";
+import {
+  AP_MODULES,
+  AP_PILOT_INFO,
+  AP_TIERS,
+  AP_TIER_LABEL,
+  apFmt,
+  apNum,
+  type ModuleId,
+  type Pricing,
+  type Quote,
+  type Tier,
+} from "@/lib/proposal/pricing";
 
 export const SIRROM_LOGO = "/proposal/sirrom-lockup-ink.png";
 
@@ -29,6 +40,32 @@ function PPFigure({ label, value }: { label: string; value: string }) {
 }
 
 function PPInvestment({ quote }: { quote: Quote }) {
+  if (quote.mode === "pilot") {
+    return (
+      <div className="pp-inv-body" data-testid="pilot-investment">
+        <div className="pp-inv-lines">
+          <div className="pp-inv-line pp-inv-head">
+            <span>{quote.info.name}</span>
+            <span className="pp-inv-meta">Starter Pilot</span>
+          </div>
+          <div className="pp-inv-detail">
+            Up to {quote.usage} {quote.info.usageUnit}
+            {quote.customers != null ? ` · up to ${quote.customers} invited customers` : ""}
+            {quote.info.durationNote ? ` · ${quote.days} days ${quote.info.durationNote}` : ""}
+          </div>
+          <div className="pp-inv-note">
+            No automatic monthly subscription. Continuing to a full implementation is optional and needs a separate agreement.
+            {quote.info.startingAt ? " Final fee depends on technical scope and security requirements." : ""}
+          </div>
+        </div>
+        <div className="pp-figs">
+          <PPFigure label={quote.info.startingAt ? "Pilot · starting at" : "One-time pilot"} value={apFmt(quote.fee)} />
+          <PPFigure label="Duration" value={`${quote.days} days`} />
+          <PPFigure label="Implementation credit" value={apFmt(quote.credit)} />
+        </div>
+      </div>
+    );
+  }
   if (quote.mode === "partner") {
     return (
       <div className="pp-inv-body">
@@ -84,6 +121,45 @@ function PPInvestment({ quote }: { quote: Quote }) {
         <PPFigure label="First-year total" value={quote.firstYear == null ? "Custom quote" : apFmt(quote.firstYear)} />
       </div>
     </div>
+  );
+}
+
+function PPPilots({ quote, P }: { quote: Quote; P: Pricing }) {
+  const selected = quote.mode === "pilot" ? quote.id : null;
+  return (
+    <section className="pp-pilots-sec" data-testid="pp-pilots">
+      <PPSec n="III" t="Start Small. Prove the Value." />
+      <p className="pp-pilot-intro">
+        Not ready for a full implementation? Choose one capability to test in your business before making a larger commitment.
+      </p>
+      <div className="pp-pilots">
+        {AP_MODULES.map((m) => {
+          const info = AP_PILOT_INFO[m.id];
+          const pp = P.pilots[m.id];
+          const on = selected === m.id;
+          return (
+            <div className={"pp-pilot" + (on ? " on" : "")} key={m.id}>
+              {on && <span className="pp-flag">Selected</span>}
+              <div className="pp-pilot-name">{info.name}</div>
+              <div className="pp-pilot-price">
+                {info.startingAt && <span>from </span>}
+                {apFmt(apNum(pp.price))}
+                <i> one-time · {apNum(pp.days)} days</i>
+              </div>
+              <div className="pp-pilot-meta">
+                Up to {apNum(pp.usage)} {m.id === "research" ? "research briefs" : m.id === "discovery" ? "discovery searches" : "AI briefs"}
+                {m.id === "journey" ? ` · ${apNum(pp.customers)} invited customers` : ""}
+              </div>
+              <div className="pp-pilot-credit">{apFmt(apNum(pp.credit))} credit toward full setup</div>
+            </div>
+          );
+        })}
+      </div>
+      <p className="pp-pilot-fine">
+        One-time fee, no automatic subscription. Credit applies if signed within {apNum(P.pilotCreditDays)} days of completion. Client
+        Journey pilot: real invited customers once secure production access is in place; final price depends on technical and security scope.
+      </p>
+    </section>
   );
 }
 
@@ -169,9 +245,11 @@ export function ProposalSheet({ quote, pricing: P }: { quote: Quote; pricing: Pr
         <p className="pp-t-foot">Usage allowances are per month.</p>
       </section>
 
+      <PPPilots quote={quote} P={P} />
+
       <div className="pp-row">
         <section className="pp-bundle">
-          <PPSec n="III" t="Bundle Savings" />
+          <PPSec n="IV" t="Bundle Savings" />
           <div className={"pp-b-item" + (n === 2 ? " on" : "")}>
             <div className="pp-b-k">Choose 2 modules</div>
             <div className="pp-b-v">{apNum(P.disc2)}% off setup and monthly fees</div>
@@ -190,7 +268,7 @@ export function ProposalSheet({ quote, pricing: P }: { quote: Quote; pricing: Pr
         <section className={"pp-partner" + (partner ? " on" : "")}>
           <div className="pp-p-top">
             <div className="pp-p-label">
-              <span className="pp-pn">IV</span> AI Technology Partner
+              <span className="pp-pn">V</span> AI Technology Partner
             </div>
             {partner && <span className="pp-flag pp-flag-inv">Selected</span>}
           </div>
@@ -217,7 +295,7 @@ export function ProposalSheet({ quote, pricing: P }: { quote: Quote; pricing: Pr
       </div>
 
       <section className="pp-inv">
-        <PPSec n="V" t="Your Selected Investment" />
+        <PPSec n="VI" t="Your Selected Investment" />
         <PPInvestment quote={quote} />
       </section>
 

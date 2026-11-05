@@ -69,6 +69,19 @@ export interface Pricing {
   disc3Setup: Num;
   disc3Monthly: Num;
   partner: Num;
+  /** Starter Pilot settings (editable on Page 2). */
+  pilots: Record<ModuleId, PilotPricing>;
+  /** Days after pilot completion during which the credit can be used. */
+  pilotCreditDays: Num;
+}
+
+export interface PilotPricing {
+  price: Num;
+  days: Num;
+  usage: Num;
+  credit: Num;
+  /** Client Journey only: maximum invited real customers. */
+  customers?: Num;
 }
 
 export const AP_DEFAULT_PRICING: Pricing = {
@@ -79,9 +92,104 @@ export const AP_DEFAULT_PRICING: Pricing = {
   disc3Setup: 20,
   disc3Monthly: 15,
   partner: 2195,
+  pilots: {
+    research: { price: 750, days: 30, usage: 15, credit: 500 },
+    discovery: { price: 750, days: 30, usage: 3, credit: 500 },
+    journey: { price: 3500, days: 45, usage: 20, customers: 5, credit: 2000 },
+  },
+  pilotCreditDays: 30,
 };
 
-export type Mode = "modular" | "partner";
+/* ── Starter Pilot — what each pilot includes and excludes ─────── */
+
+export interface PilotInfo {
+  id: ModuleId;
+  name: string;
+  usageUnit: string;
+  /** The fee is a starting price, subject to final technical scope and security requirements. */
+  startingAt: boolean;
+  /** How the duration is counted. */
+  durationNote: string;
+  included: string[];
+  limitations: string[];
+  /** Conditions that must be met before the pilot can run (Client Journey). */
+  prerequisites?: string[];
+}
+
+export const AP_PILOT_INFO: Record<ModuleId, PilotInfo> = {
+  research: {
+    id: "research",
+    name: "Research Prospect Pilot",
+    usageUnit: "AI prospect research briefs",
+    startingAt: false,
+    durationNote: "",
+    included: ["Basic configuration and onboarding", "One results review"],
+    limitations: [
+      "No CRM integrations",
+      "No production platform implementation",
+      "No premium commercial data subscriptions",
+    ],
+  },
+  discovery: {
+    id: "discovery",
+    name: "Discover Professionals Pilot",
+    usageUnit: "discovery searches",
+    startingAt: false,
+    durationNote: "",
+    included: ["Each search targets up to 5 verified professional profiles", "Basic configuration and onboarding", "One results review"],
+    limitations: [
+      "No automated outreach",
+      "No contact database subscription",
+      "No premium commercial data subscriptions",
+    ],
+  },
+  journey: {
+    id: "journey",
+    name: "Client Journey Live Pilot",
+    usageUnit: "AI preparation briefs",
+    startingAt: true,
+    durationNote: "of live access, starting once the portal is configured, tested and launched",
+    included: [
+      "One Andrew-side administrator",
+      "Secure customer login and private client access",
+      "Digital interest cards",
+      "Style preference questionnaire",
+      "Consultation requests, subject to Andrew's approval",
+      "Customer-facing journey status",
+      "Manual milestone management by Andrew",
+      "AI-generated preparation summaries",
+      "Initial configuration and onboarding",
+      "Pilot results review",
+    ],
+    limitations: [
+      "No real payments",
+      "No automated emails or SMS marketing",
+      "No Insightly integration",
+      "No manufacturing integration",
+      "No complex scheduling",
+    ],
+    prerequisites: [
+      "Secure production database",
+      "Authentication and authorization for Andrew and invited customers",
+      "Customer data isolation",
+      "Privacy notice for participating customers",
+      "Access controls",
+      "Agreed data retention and deletion process",
+    ],
+  },
+};
+
+/** Terms that apply to every Starter Pilot. */
+export const AP_PILOT_RULES = [
+  "The pilot does not become a subscription. A full implementation needs a separate agreement approved by Andrew.",
+  "No recurring fees during the pilot evaluation.",
+  "Temporary access ends when the pilot expires unless a separate agreement is signed.",
+  "A pilot is not the same as a fully implemented module.",
+  "Major feature development and integrations are quoted separately.",
+  "Not combined with the AI Technology Partnership.",
+];
+
+export type Mode = "modular" | "pilot" | "partner";
 export interface ModuleSel {
   on: boolean;
   usage: Num;
@@ -89,6 +197,10 @@ export interface ModuleSel {
 export interface Selection {
   mode: Mode;
   modules: Record<ModuleId, ModuleSel>;
+  /** Starter Pilot: the one module being piloted. */
+  pilot: ModuleId;
+  /** Conversion calculator: other modules Andrew might add when continuing. */
+  convertWith: ModuleId[];
 }
 export interface ApState {
   sel: Selection;
@@ -98,6 +210,8 @@ export interface ApState {
 export const AP_DEFAULT_SEL: Selection = {
   mode: "modular",
   modules: { research: { on: false, usage: 25 }, discovery: { on: false, usage: 5 }, journey: { on: false, usage: 25 } },
+  pilot: "research",
+  convertWith: [],
 };
 
 export const AP_KEY = "sirrom-apfc-pricing-v1";
@@ -144,7 +258,45 @@ export interface PartnerLine {
   usage: number;
   over: boolean;
 }
+/** What continuing after a pilot would cost — optional, future, never added to the pilot fee. */
+export interface PilotConversion {
+  pilotId: ModuleId;
+  /** Modules in the future implementation (the piloted one first). */
+  modules: ModuleId[];
+  lines: ModularLine[];
+  /** Standard setup before any bundle discount. */
+  setupOrig: number;
+  setupPct: number;
+  /** Setup after any bundle discount, before the pilot credit. */
+  setupNet: number;
+  creditAvailable: number;
+  /** Credit applied once, never more than the setup balance. */
+  creditApplied: number;
+  remainingSetup: number;
+  monthlyPct: number;
+  /** Future monthly service; null when usage needs a custom quote. */
+  monthly: number | null;
+  hasCustom: boolean;
+}
+
+export interface PilotQuote {
+  mode: "pilot";
+  empty: false;
+  /** No implementation lines: a pilot is not a fully implemented module. */
+  lines: [];
+  id: ModuleId;
+  info: PilotInfo;
+  fee: number;
+  days: number;
+  usage: number;
+  customers: number | null;
+  credit: number;
+  creditDays: number;
+  conversion: PilotConversion;
+}
+
 export type Quote =
+  | PilotQuote
   | { mode: "partner"; empty: false; lines: PartnerLine[]; setup: 0; monthly: number; firstYear: number; overMedium: PartnerLine[] }
   | { mode: "modular"; empty: true; lines: ModularLine[]; n: 0 }
   | {
@@ -165,7 +317,54 @@ export type Quote =
       savings: number | null;
     };
 
+export function apPilotConversion(sel: Selection, P: Pricing): PilotConversion {
+  const pilotId = sel.pilot;
+  const ids = [pilotId, ...AP_MODULES.map((m) => m.id).filter((id) => id !== pilotId && (sel.convertWith || []).includes(id))];
+  const modules = {} as Record<ModuleId, ModuleSel>;
+  AP_MODULES.forEach((m) => {
+    modules[m.id] = { on: ids.includes(m.id), usage: sel.modules[m.id].usage };
+  });
+  // Reuse the standard modular pricing (tiers + bundle discounts) for the future implementation.
+  const q = apComputeQuote({ ...sel, mode: "modular", modules }, P);
+  if (q.mode !== "modular" || q.empty) throw new Error("conversion needs at least the piloted module");
+  const creditAvailable = apNum(P.pilots[pilotId].credit);
+  // The credit is applied once, against the (possibly discounted) setup, and never below zero.
+  const creditApplied = Math.min(creditAvailable, q.setupNet);
+  return {
+    pilotId,
+    modules: ids,
+    lines: q.lines,
+    setupOrig: q.setupOrig,
+    setupPct: q.setupPct,
+    setupNet: q.setupNet,
+    creditAvailable,
+    creditApplied,
+    remainingSetup: apCents(Math.max(0, q.setupNet - creditApplied)),
+    monthlyPct: q.monthlyPct,
+    monthly: q.monthlyNet,
+    hasCustom: q.hasCustom,
+  };
+}
+
 export function apComputeQuote(sel: Selection, P: Pricing): Quote {
+  if (sel.mode === "pilot") {
+    const id = sel.pilot;
+    const pp = P.pilots[id];
+    return {
+      mode: "pilot",
+      empty: false,
+      lines: [],
+      id,
+      info: AP_PILOT_INFO[id],
+      fee: apNum(pp.price),
+      days: apNum(pp.days),
+      usage: apNum(pp.usage),
+      customers: id === "journey" ? apNum(pp.customers) : null,
+      credit: apNum(pp.credit),
+      creditDays: apNum(P.pilotCreditDays),
+      conversion: apPilotConversion(sel, P),
+    };
+  }
   if (sel.mode === "partner") {
     const monthly = apNum(P.partner);
     const lines = AP_MODULES.map((m) => {
@@ -212,6 +411,21 @@ export function apComputeQuote(sel: Selection, P: Pricing): Quote {
 
 export function apQuoteText(q: Quote): string {
   const out = ["Sirrom Studios × Andrew Porter Fine Clothiers — Pricing Summary", ""];
+  if (q.mode === "pilot") {
+    const c = q.conversion;
+    out.push(`Starter Pilot: ${q.info.name}`);
+    out.push(`One-time pilot fee: ${q.info.startingAt ? "starting at " : ""}${apFmt(q.fee)}${q.info.startingAt ? " (subject to final technical scope and security requirements)" : ""}`);
+    out.push(`Duration: ${q.days} days${q.info.durationNote ? ` ${q.info.durationNote}` : ""}`);
+    out.push(`Included: up to ${q.usage} ${q.info.usageUnit}${q.customers != null ? `, up to ${q.customers} invited customers` : ""}`);
+    out.push("No automatic monthly subscription.");
+    out.push(`Implementation credit: ${apFmt(q.credit)} toward the full setup fee if signed within ${q.creditDays} days of pilot completion.`);
+    out.push("", "Optional future implementation (not due now):");
+    out.push(`Standard setup: ${apFmt(c.setupOrig)}${c.setupPct ? ` (${c.setupPct}% bundle discount → ${apFmt(c.setupNet)})` : ""}`);
+    out.push(`Pilot credit: ${apFmt(-c.creditApplied)}`);
+    out.push(`Remaining setup: ${apFmt(c.remainingSetup)}`);
+    out.push(`Monthly service: ${c.monthly == null ? "Custom quote required" : apFmt(c.monthly)}`);
+    return out.join("\n");
+  }
   if (q.mode === "partner") {
     out.push("Sirrom AI Technology Partnership (12-month agreement)");
     out.push("Includes all three modules at Medium usage allowances:");
@@ -250,7 +464,22 @@ export function apLoad(raw: string | null): ApState {
       pricing[m.id] = { ...base.pricing[m.id], ...(r.pricing[m.id] || {}) };
       modules[m.id] = { ...base.sel.modules[m.id], ...((r.sel.modules || {})[m.id] || {}) };
     });
-    return { sel: { mode: r.sel.mode === "partner" ? "partner" : "modular", modules }, pricing };
+    const pilots = {} as Pricing["pilots"];
+    AP_MODULES.forEach((m) => {
+      pilots[m.id] = { ...base.pricing.pilots[m.id], ...((r.pricing.pilots || {})[m.id] || {}) };
+    });
+    pricing.pilots = pilots;
+    const ids = AP_MODULES.map((m) => m.id);
+    const mode: Mode = r.sel.mode === "partner" || r.sel.mode === "pilot" ? r.sel.mode : "modular";
+    return {
+      sel: {
+        mode,
+        modules,
+        pilot: ids.includes(r.sel.pilot) ? r.sel.pilot : base.sel.pilot,
+        convertWith: Array.isArray(r.sel.convertWith) ? r.sel.convertWith.filter((x: ModuleId) => ids.includes(x)) : [],
+      },
+      pricing,
+    };
   } catch {
     return base;
   }

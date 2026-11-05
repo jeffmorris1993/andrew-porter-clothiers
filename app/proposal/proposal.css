@@ -193,3 +193,69 @@ html,body,.ap-root{background:#fff!important;width:8.5in}
 .print-root{display:block!important}
 .print-root .pp-sheet{width:8.5in;height:11in;page-break-after:avoid;break-after:avoid}
 }
+
+/* ---------- Starter Pilot (added) ---------- */
+/* Page 1: tighter rhythm so the extra section still fits one US Letter page. */
+.pp-sheet{gap:8px;padding:28px 54px 20px}
+.pp-head{padding-bottom:9px}
+.pp-title{gap:3px}
+.pp-title h1{font-size:36px}
+.pp-sub{font-size:13px}
+.pp-sec{margin-bottom:6px}
+.pp-mod{padding:10px 12px 9px;gap:3px}
+.pp-mod h3{font-size:17px}
+.pp-mod p{font-size:9.8px;line-height:1.38}
+.pp-table td{padding:4px 10px}
+.pp-table th{padding-bottom:5px}
+.pp-t-name{font-size:14.5px}
+.pp-t-price b{font-size:16px}
+.pp-t-foot{margin-top:3px!important}
+.pp-row{gap:18px}
+.pp-bundle{gap:6px}
+.pp-b-item{padding:7px 12px}
+.pp-b-v{font-size:14.5px}
+.pp-partner{padding:11px 16px 10px;gap:4px}
+.pp-partner h2{font-size:18px}
+.pp-p-price{font-size:24px}
+.pp-partner ul{gap:1px 14px}
+.pp-partner li{font-size:9px;line-height:1.3}
+.pp-p-req{padding-top:5px!important;font-size:9px}
+.pp-pilot-intro{font:400 10.5px/1.35 var(--sans);color:var(--ink);margin:-2px 0 6px!important}
+.pp-pilots{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.pp-pilot{position:relative;padding:7px 11px 7px;border:1px solid var(--rule);background:var(--paper);display:flex;flex-direction:column;gap:1px}
+.pp-pilot.on{border-color:var(--gold);background:var(--gold-t)}
+.pp-pilot .pp-flag{position:absolute;top:7px;right:9px}
+.pp-pilot-name{font:600 14px/1.15 var(--serif);color:var(--navy);white-space:nowrap;padding-right:56px}
+.pp-pilot-price{font:600 16px/1.15 var(--serif);color:var(--navy);white-space:nowrap}
+.pp-pilot-price span{font:400 9.5px var(--sans);color:var(--muted)}
+.pp-pilot-price i{font:400 9px var(--sans);font-style:normal;color:var(--muted)}
+.pp-pilot-meta{font:400 9px/1.3 var(--sans);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pp-pilot-credit{font:500 9px/1.3 var(--sans);color:var(--gold-d)}
+.pp-pilot-fine{font:400 8.3px/1.35 var(--sans);color:var(--muted);margin-top:4px!important}
+.pp-inv-detail{font:400 10px/1.4 var(--sans);color:var(--muted);padding-bottom:5px;border-bottom:1px solid var(--rule)}
+/* Page 2 */
+.cx-seg.three{grid-template-columns:repeat(3,minmax(0,1fr))}
+.cx-pilot{margin-top:14px;border:1px solid var(--gold);background:var(--paper);padding:16px 18px;display:flex;flex-direction:column;gap:12px}
+.cx-pilot-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}
+.cx-pilot-name{font:600 22px var(--serif);color:var(--navy)}
+.cx-pilot-dur{font:400 13px var(--sans);color:var(--muted)}
+.cx-pilot-price{font:600 30px/1 var(--serif);color:var(--navy);text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+.cx-pilot-price small{font:500 11px var(--sans);color:var(--muted)}
+.cx-pilot-cols{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.cx-pilot-k{display:block;font:600 9.5px var(--sans);letter-spacing:.16em;text-transform:uppercase;color:var(--gold-d);margin-bottom:6px}
+.cx-pilot ul{margin:0 0 10px;padding-left:16px;font:400 13px/1.5 var(--sans);color:var(--ink)}
+.cx-pilot p{margin:0;font:400 13px/1.5 var(--sans);color:var(--ink)}
+.cx-pilot-req{background:var(--warn-t);padding:10px 12px}
+.cx-pilot-req p{color:var(--warn)}
+.cx-pilot-rules{margin:0!important;border-top:1px solid var(--rule);padding-top:10px!important;font-size:12px!important;color:var(--muted)!important}
+.cx-conv{display:grid;grid-template-columns:200px minmax(0,1fr);gap:16px;margin-bottom:16px}
+.cx-conv-paid{border:1px solid var(--rule);background:var(--ivory);padding:14px 16px;display:flex;flex-direction:column;gap:4px}
+.cx-conv-paid b{font:600 28px var(--serif);color:var(--navy)}
+.cx-conv-paid small{font:400 12px var(--sans);color:var(--muted)}
+.cx-conv-future{border:1px dashed #CFC5B2;padding:12px 16px}
+.cx-conv-extra{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;margin-bottom:14px}
+.cx-check{display:inline-flex;align-items:center;gap:7px;font:500 13px var(--sans);color:var(--ink);cursor:pointer}
+.cx-check input{width:16px;height:16px;accent-color:var(--navy)}
+.cx-sec[hidden]{display:none}
+@media (max-width:980px){.cx-seg.three{grid-template-columns:1fr}.cx-conv{grid-template-columns:1fr}}
+@media (max-width:620px){.cx-pilot-cols{grid-template-columns:1fr}.cx-pilot-price{align-items:flex-start;text-align:left}}
