@@ -40,13 +40,6 @@ test("usage above High requires a custom quote", async ({ page }) => {
   await expect(page.getByTestId("first-year-total")).toHaveText("Custom Quote Required");
 });
 
-test("partnership mode shows the retainer and flags usage over Medium", async ({ page }) => {
-  await page.getByRole("radio", { name: /AI Technology Partnership/ }).click();
-  await expect(summary(page)).toContainText("$26,340");
-  await page.getByLabel("How many new customer inquiries will Andrew receive per month?").fill("80");
-  await expect(summary(page)).toContainText("Entered usage exceeds Medium allowances for Client Journey");
-});
-
 test("advanced pricing edits flow through, and settings survive a reload", async ({ page }) => {
   await page.getByRole("switch", { name: "Select Research Prospect" }).click();
   await page.getByRole("button", { name: "Advanced Pricing Settings" }).click();
@@ -96,8 +89,8 @@ test("starter pilot: one pilot at a time, details, conversion and Page 1", async
   await expect(page.getByTestId("pilot-prereqs")).toContainText("Customer data isolation");
   const conv = page.getByTestId("pilot-conversion");
   await expect(conv).toContainText("$5,000");
-  await expect(conv).toContainText("−$2,000");
-  await expect(conv).toContainText("$3,000");
+  await expect(conv).toContainText("−$2,500");
+  await expect(conv.locator(".cx-row", { hasText: "Remaining setup payment" })).toContainText("$2,500");
   await expect(conv).toContainText("$399/mo");
   await expect(conv).toContainText("not due now");
   await expect(summary(page)).toContainText("None");
@@ -107,7 +100,7 @@ test("starter pilot: one pilot at a time, details, conversion and Page 1", async
   // Adding a module later applies the bundle discount, then the credit once.
   await conv.getByLabel("Research Prospect").check();
   await expect(conv).toContainText("Bundle discount (10%)");
-  await expect(conv).toContainText("$4,300");
+  await expect(conv).toContainText("$3,800");
 
   await page.getByRole("button", { name: "View Client Proposal" }).click();
   const sheet = page.locator(".pv").getByTestId("proposal-sheet");
@@ -117,9 +110,9 @@ test("starter pilot: one pilot at a time, details, conversion and Page 1", async
   await expect(inv).toContainText("No automatic monthly subscription");
   await expect(inv).toContainText("$3,500");
   await expect(inv).toContainText("45 days");
-  await expect(inv).toContainText("$2,000");
+  await expect(inv).toContainText("$2,500");
   // The internal conversion figures stay off the client page.
-  await expect(sheet).not.toContainText("$4,300");
+  await expect(sheet).not.toContainText("$3,800");
   await expect(sheet).not.toContainText("Remaining setup");
 });
 
@@ -139,7 +132,7 @@ test("Page 1 fits one letter page in every pricing model", async ({ page }) => {
   const overflow = () => page.locator(".pv .pp-sheet").evaluate((s) => s.scrollHeight - s.clientHeight);
   await page.getByRole("switch", { name: "Select Research Prospect" }).click();
   await page.getByRole("switch", { name: "Select Discover Professionals" }).click();
-  for (const mode of [/Modular Implementation/, /Starter Pilot/, /AI Technology Partnership/]) {
+  for (const mode of [/Modular Implementation/, /Starter Pilot/]) {
     await page.getByRole("radio", { name: mode }).click();
     if (String(mode).includes("Starter")) await page.getByRole("radiogroup", { name: "Starter Pilot" }).getByRole("radio", { name: /Client Journey/ }).click();
     await page.getByRole("button", { name: "View Client Proposal" }).click();
@@ -170,7 +163,6 @@ test("Page 1 shows only what was chosen in the configuration", async ({ page }) 
   await expect(sheet().locator(".pp-table tbody tr")).toHaveCount(1);
   await expect(sheet()).not.toContainText("Discover Professionals");
   await expect(sheet()).not.toContainText("Start Small");
-  await expect(sheet()).not.toContainText("Sirrom AI Technology Partnership");
   await expect(sheet()).not.toContainText("Bundle Savings");
   await back();
 
@@ -182,14 +174,15 @@ test("Page 1 shows only what was chosen in the configuration", async ({ page }) 
   await expect(sheet()).not.toContainText("Research Prospect Pilot");
   await expect(sheet()).not.toContainText("Client Journey Live Pilot");
   await expect(sheet().locator(".pp-table")).toHaveCount(0);
-  await expect(sheet()).not.toContainText("Sirrom AI Technology Partnership");
   await back();
 
-  // Partnership: partnership and its included modules, no module pricing or pilots.
-  await page.getByRole("radio", { name: /AI Technology Partnership/ }).click();
-  await view();
-  await expect(sheet().locator(".pp-partner")).toBeVisible();
-  await expect(sheet().locator(".pp-mod")).toHaveCount(3);
-  await expect(sheet().locator(".pp-table")).toHaveCount(0);
-  await expect(sheet()).not.toContainText("Start Small");
+});
+
+test("the AI Technology Partnership is no longer offered", async ({ page }) => {
+  await expect(page.getByRole("radiogroup", { name: "Pricing model" }).getByRole("radio")).toHaveCount(2);
+  await expect(page.locator("body")).not.toContainText("Partnership");
+  await page.getByRole("button", { name: "Advanced Pricing Settings" }).click();
+  await expect(page.locator("body")).not.toContainText("retainer");
+  await page.getByRole("button", { name: "View Client Proposal" }).click();
+  await expect(page.locator("body")).not.toContainText("Partnership");
 });

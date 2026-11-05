@@ -73,21 +73,6 @@ describe("modular quotes", () => {
   });
 });
 
-describe("partnership", () => {
-  it("is $0 setup and 12 × the retainer", () => {
-    const q = apComputeQuote(sel({}, "partner"), P);
-    expect(q).toMatchObject({ mode: "partner", setup: 0, monthly: 2195, firstYear: 26340 });
-  });
-  it("flags usage above the Medium allowance", () => {
-    const s = sel({}, "partner");
-    s.modules.discovery.usage = 20;
-    const q = apComputeQuote(s, P);
-    if (q.mode !== "partner") throw new Error("expected partner");
-    expect(q.overMedium.map((l) => l.id)).toEqual(["discovery"]);
-    expect(apQuoteText(q)).toContain("exceeds Medium, custom usage adjustment required");
-  });
-});
-
 describe("formatting and quote text", () => {
   it("formats money", () => {
     expect(apFmt(9450)).toBe("$9,450");
@@ -108,11 +93,11 @@ describe("saved state", () => {
     expect(apLoad(null)).toEqual({ sel: AP_DEFAULT_SEL, pricing: AP_DEFAULT_PRICING });
     expect(apLoad("{not json")).toEqual({ sel: AP_DEFAULT_SEL, pricing: AP_DEFAULT_PRICING });
   });
-  it("merges a partial save over the defaults", () => {
+  it("merges a partial save over the defaults; a saved partnership (no longer offered) loads as Modular", () => {
     const s = apLoad(JSON.stringify({ sel: { mode: "partner", modules: { research: { on: true } } }, pricing: { partner: 1999, research: { setup: 1500 } } }));
-    expect(s.sel.mode).toBe("partner");
+    expect(s.sel.mode).toBe("modular");
     expect(s.sel.modules.research).toEqual({ on: true, usage: 25 });
-    expect(s.pricing.partner).toBe(1999);
+    expect("partner" in s.pricing).toBe(false);
     expect(s.pricing.research).toEqual({ setup: 1500, low: 199, medium: 299, high: 499 });
     expect(s.pricing.journey).toEqual(AP_DEFAULT_PRICING.journey);
   });
@@ -132,7 +117,7 @@ describe("starter pilot", () => {
   it.each([
     ["research", 750, 30, 15, 500],
     ["discovery", 750, 30, 3, 500],
-    ["journey", 3500, 45, 20, 2000],
+    ["journey", 3500, 45, 20, 2500],
   ] as const)("%s pilot defaults", (id, fee, days, usage, credit) => {
     const q = apComputeQuote(pilotSel(id), P);
     expect(q).toMatchObject({ mode: "pilot", id, fee, days, usage, credit, creditDays: 30 });
@@ -154,7 +139,7 @@ describe("starter pilot", () => {
   it.each([
     ["research", 2000, 500, 1500, 199],
     ["discovery", 2500, 500, 2000, 299],
-    ["journey", 5000, 2000, 3000, 399],
+    ["journey", 5000, 2500, 2500, 399],
   ] as const)("%s conversion matches the worked example", (id, setup, credit, remaining, monthly) => {
     const c = apPilotConversion(pilotSel(id), P);
     expect(c).toMatchObject({ setupOrig: setup, setupNet: setup, creditApplied: credit, remainingSetup: remaining, monthly });
@@ -170,8 +155,8 @@ describe("starter pilot", () => {
 
   it("with a later bundle the credit is applied once, after the bundle discount", () => {
     const c = apPilotConversion(pilotSel("journey", { convertWith: ["research"] }), P);
-    // (5000 + 2000) × 0.9 = 6300, minus the single $2,000 journey credit
-    expect(c).toMatchObject({ modules: ["journey", "research"], setupOrig: 7000, setupPct: 10, setupNet: 6300, creditApplied: 2000, remainingSetup: 4300 });
+    // (5000 + 2000) × 0.9 = 6300, minus the single $2,500 journey credit
+    expect(c).toMatchObject({ modules: ["journey", "research"], setupOrig: 7000, setupPct: 10, setupNet: 6300, creditApplied: 2500, remainingSetup: 3800 });
     // monthly (399 + 199) × 0.9 = 538.2 → 540
     expect(c.monthly).toBe(540);
   });
@@ -197,11 +182,10 @@ describe("starter pilot", () => {
     if (q.mode === "pilot") expect(q.conversion.remainingSetup).toBe(1900);
   });
 
-  it("modular and partnership results are unchanged by pilot settings", () => {
+  it("modular results are unchanged by pilot settings", () => {
     const edited = apClone(P);
     edited.pilots.research.price = 1;
     expect(apComputeQuote(sel({ research: 25, discovery: 5 }), edited)).toMatchObject({ firstYear: 9450 });
-    expect(apComputeQuote(sel({}, "partner"), edited)).toMatchObject({ firstYear: 26340 });
   });
 
   it("quote text shows the pilot apart from the optional future implementation", () => {
@@ -209,15 +193,16 @@ describe("starter pilot", () => {
     expect(t).toContain("One-time pilot fee: starting at $3,500 (subject to final technical scope and security requirements)");
     expect(t).toContain("No automatic monthly subscription.");
     expect(t).toContain("Optional future implementation (not due now):");
-    expect(t).toContain("Remaining setup: $3,000");
+    expect(t).toContain("Remaining setup: $2,500");
+    expect(t).not.toMatch(/Partnership/);
   });
 
   it("loads old saved state without pilot settings, and keeps pilot selections", () => {
-    const old = apLoad(JSON.stringify({ sel: { mode: "modular", modules: {} }, pricing: { partner: 2000 } }));
+    const old = apLoad(JSON.stringify({ sel: { mode: "modular", modules: {} }, pricing: { disc2: 12 } }));
     expect(old.pricing.pilots).toEqual(AP_DEFAULT_PRICING.pilots);
     expect(old.sel).toMatchObject({ pilot: "research", convertWith: [] });
     const saved = apLoad(JSON.stringify({ sel: { mode: "pilot", pilot: "journey", convertWith: ["discovery", "bogus"], modules: {} }, pricing: { pilots: { journey: { price: 4000 } } } }));
     expect(saved.sel).toMatchObject({ mode: "pilot", pilot: "journey", convertWith: ["discovery"] });
-    expect(saved.pricing.pilots.journey).toEqual({ price: 4000, days: 45, usage: 20, customers: 5, credit: 2000 });
+    expect(saved.pricing.pilots.journey).toEqual({ price: 4000, days: 45, usage: 20, customers: 5, credit: 2500 });
   });
 });

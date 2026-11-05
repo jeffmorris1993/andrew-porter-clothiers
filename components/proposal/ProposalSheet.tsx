@@ -65,33 +65,6 @@ function PPInvestment({ quote }: { quote: Quote }) {
       </div>
     );
   }
-  if (quote.mode === "partner") {
-    return (
-      <div className="pp-inv-body">
-        <div className="pp-inv-lines">
-          <div className="pp-inv-line pp-inv-head">
-            <span>Sirrom AI Technology Partnership</span>
-          </div>
-          {quote.lines.map((l) => (
-            <div className="pp-inv-line" key={l.id}>
-              <span>{l.mod.name}</span>
-              <span className="pp-inv-meta">
-                Medium · up to {l.mod.limits[1]} {l.mod.unit} / month
-              </span>
-            </div>
-          ))}
-          {quote.overMedium.length > 0 && (
-            <div className="pp-inv-note">Expected usage above Medium allowances will be addressed through a custom usage adjustment.</div>
-          )}
-        </div>
-        <div className="pp-figs">
-          <PPFigure label="Separate setup" value="$0" />
-          <PPFigure label="Monthly retainer" value={apFmt(quote.monthly)} />
-          <PPFigure label="12-month contract" value={apFmt(quote.firstYear)} />
-        </div>
-      </div>
-    );
-  }
   if (quote.empty) return <div className="pp-inv-empty">Your personalized investment will appear here.</div>;
   return (
     <div className="pp-inv-body">
@@ -181,7 +154,7 @@ function PPPilot({ quote, P, n }: { quote: Extract<Quote, { mode: "pilot" }>; P:
         </div>
         {info.prerequisites && (
           <p className="pp-pilot-req">
-            Real invited customers join once secure production access is in place — {info.prerequisites.join(", ")}. The final fee
+            Real invited customers join once secure production access is in place — {info.prerequisites.map((x) => x.charAt(0).toLowerCase() + x.slice(1)).join(", ")}. The final fee
             depends on technical scope and security requirements.
           </p>
         )}
@@ -195,16 +168,14 @@ function PPPilot({ quote, P, n }: { quote: Extract<Quote, { mode: "pilot" }>; P:
 }
 
 export function ProposalSheet({ quote, pricing: P }: { quote: Quote; pricing: Pricing }) {
-  const partner = quote.mode === "partner";
   const modular = quote.mode === "modular";
   const tierOf = (id: ModuleId): Tier | null => {
-    if (partner) return "medium";
     const l = quote.lines.find((x) => x.id === id);
     return l && "tier" in l ? l.tier : null;
   };
   const n = modular ? quote.lines.length : 0;
   // Page 1 shows only what was chosen on Page 2.
-  const shown = partner || (modular && quote.empty) ? AP_MODULES : AP_MODULES.filter((m) => tierOf(m.id));
+  const shown = modular && quote.empty ? AP_MODULES : AP_MODULES.filter((m) => tierOf(m.id));
   const numerals = ["I", "II", "III", "IV", "V", "VI"];
   let sec = 0;
   const next = () => numerals[sec++];
@@ -223,7 +194,7 @@ export function ProposalSheet({ quote, pricing: P }: { quote: Quote; pricing: Pr
 
       {quote.mode !== "pilot" && (
         <section>
-          <PPSec n={next()} t={partner ? "Included Solutions" : n ? "Your Solutions" : "Choose Your Solutions"} />
+          <PPSec n={next()} t={n ? "Your Solutions" : "Choose Your Solutions"} />
           <div className="pp-mods" style={{ gridTemplateColumns: `repeat(${shown.length},minmax(0,1fr))` }}>
             {shown.map((m) => {
               const on = !!tierOf(m.id);
@@ -231,7 +202,7 @@ export function ProposalSheet({ quote, pricing: P }: { quote: Quote; pricing: Pr
                 <div className={"pp-mod" + (on ? " on" : "")} key={m.id}>
                   <div className="pp-mod-top">
                     <h3>{m.name}</h3>
-                    {on && <span className="pp-flag">{partner ? "Included" : "Selected"}</span>}
+                    {on && <span className="pp-flag">Selected</span>}
                   </div>
                   <p>{m.desc}</p>
                 </div>
@@ -303,33 +274,6 @@ export function ProposalSheet({ quote, pricing: P }: { quote: Quote; pricing: Pr
 
       {quote.mode === "pilot" && <PPPilot quote={quote} P={P} n={next()} />}
 
-      {partner && (
-        <section className="pp-partner on">
-          <div className="pp-p-top">
-            <div className="pp-p-label">
-              <span className="pp-pn">{next()}</span> AI Technology Partner
-            </div>
-            <span className="pp-flag pp-flag-inv">Selected</span>
-          </div>
-          <div className="pp-p-hd">
-            <h2>Sirrom AI Technology Partnership</h2>
-            <div className="pp-p-price">
-              {apFmt(apNum(P.partner))}
-              <i>/month</i>
-            </div>
-          </div>
-          <ul>
-            <li>All three modules at Medium usage allowances</li>
-            <li>No separate module setup fees</li>
-            <li>Initial implementation and onboarding</li>
-            <li>Hosting, maintenance, and included AI usage</li>
-            <li>Monthly technology strategy meeting</li>
-            <li>Up to 2 hours of small improvements per month</li>
-          </ul>
-          <p className="pp-p-req">Requires a 12-month agreement. An alternative to purchasing individual modules.</p>
-          <p className="pp-p-fine">Additional major development and premium third-party data subscriptions are quoted separately.</p>
-        </section>
-      )}
 
       <section className="pp-inv">
         <PPSec n={next()} t="Your Selected Investment" />

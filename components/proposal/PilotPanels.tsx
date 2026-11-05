@@ -178,7 +178,7 @@ export function PilotConversion({ state, setState, quote }: { state: ApState; se
       <div className="cx-mods">
         {c.modules.map((id) => {
           const m = AP_MODULES.find((x) => x.id === id)!;
-          return <CXModuleCard key={id} m={m} ms={state.sel.modules[id]} P={P} partner={false} setModule={setModule} conversion />;
+          return <CXModuleCard key={id} m={m} ms={state.sel.modules[id]} P={P} setModule={setModule} conversion />;
         })}
       </div>
     </section>

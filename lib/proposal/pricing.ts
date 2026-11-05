@@ -68,7 +68,6 @@ export interface Pricing {
   disc2: Num;
   disc3Setup: Num;
   disc3Monthly: Num;
-  partner: Num;
   /** Starter Pilot settings (editable on Page 2). */
   pilots: Record<ModuleId, PilotPricing>;
   /** Days after pilot completion during which the credit can be used. */
@@ -91,11 +90,10 @@ export const AP_DEFAULT_PRICING: Pricing = {
   disc2: 10,
   disc3Setup: 20,
   disc3Monthly: 15,
-  partner: 2195,
   pilots: {
     research: { price: 750, days: 30, usage: 15, credit: 500 },
     discovery: { price: 750, days: 30, usage: 3, credit: 500 },
-    journey: { price: 3500, days: 45, usage: 20, customers: 5, credit: 2000 },
+    journey: { price: 3500, days: 45, usage: 20, customers: 5, credit: 2500 },
   },
   pilotCreditDays: 30,
 };
@@ -186,10 +184,9 @@ export const AP_PILOT_RULES = [
   "Temporary access ends when the pilot expires unless a separate agreement is signed.",
   "A pilot is not the same as a fully implemented module.",
   "Major feature development and integrations are quoted separately.",
-  "Not combined with the AI Technology Partnership.",
 ];
 
-export type Mode = "modular" | "pilot" | "partner";
+export type Mode = "modular" | "pilot";
 export interface ModuleSel {
   on: boolean;
   usage: Num;
@@ -214,7 +211,8 @@ export const AP_DEFAULT_SEL: Selection = {
   convertWith: [],
 };
 
-export const AP_KEY = "sirrom-apfc-pricing-v1";
+/* v2: partnership removed and Client Journey pilot credit changed — older saved settings are not reused. */
+export const AP_KEY = "sirrom-apfc-pricing-v2";
 
 export const apClone = <T,>(o: T): T => JSON.parse(JSON.stringify(o));
 export const apNum = (v: unknown): number => {
@@ -251,12 +249,6 @@ export interface ModularLine {
   tier: Tier;
   setup: number;
   price: number | null;
-}
-export interface PartnerLine {
-  id: ModuleId;
-  mod: ApModule;
-  usage: number;
-  over: boolean;
 }
 /** What continuing after a pilot would cost — optional, future, never added to the pilot fee. */
 export interface PilotConversion {
@@ -297,7 +289,6 @@ export interface PilotQuote {
 
 export type Quote =
   | PilotQuote
-  | { mode: "partner"; empty: false; lines: PartnerLine[]; setup: 0; monthly: number; firstYear: number; overMedium: PartnerLine[] }
   | { mode: "modular"; empty: true; lines: ModularLine[]; n: 0 }
   | {
       mode: "modular";
@@ -365,14 +356,6 @@ export function apComputeQuote(sel: Selection, P: Pricing): Quote {
       conversion: apPilotConversion(sel, P),
     };
   }
-  if (sel.mode === "partner") {
-    const monthly = apNum(P.partner);
-    const lines = AP_MODULES.map((m) => {
-      const u = apNum(sel.modules[m.id].usage);
-      return { id: m.id, mod: m, usage: u, over: u > m.limits[1] };
-    });
-    return { mode: "partner", empty: false, lines, setup: 0, monthly, firstYear: apCents(monthly * 12), overMedium: lines.filter((l) => l.over) };
-  }
   const lines: ModularLine[] = AP_MODULES.filter((m) => sel.modules[m.id].on).map((m) => {
     const u = apNum(sel.modules[m.id].usage);
     const tier = apTier(u, m.limits);
@@ -426,17 +409,6 @@ export function apQuoteText(q: Quote): string {
     out.push(`Monthly service: ${c.monthly == null ? "Custom quote required" : apFmt(c.monthly)}`);
     return out.join("\n");
   }
-  if (q.mode === "partner") {
-    out.push("Sirrom AI Technology Partnership (12-month agreement)");
-    out.push("Includes all three modules at Medium usage allowances:");
-    q.lines.forEach((l) =>
-      out.push(
-        `• ${l.mod.name}: up to ${l.mod.limits[1]} ${l.mod.unit}/mo (expected ${l.usage})${l.over ? " — exceeds Medium, custom usage adjustment required" : ""}`,
-      ),
-    );
-    out.push("", `Setup: $0`, `Monthly: ${apFmt(q.monthly)}`, `12-month contract value: ${apFmt(q.firstYear)}`);
-    return out.join("\n");
-  }
   if (q.empty) return out.concat("No modules selected yet.").join("\n");
   out.push("Selected modules:");
   q.lines.forEach((l) =>
@@ -458,7 +430,9 @@ export function apLoad(raw: string | null): ApState {
   try {
     const r = raw ? JSON.parse(raw) : null;
     if (!r || !r.sel || !r.pricing) return base;
-    const pricing: Pricing = { ...base.pricing, ...r.pricing };
+    const { partner: _dropped, ...savedPricing } = r.pricing;
+    void _dropped;
+    const pricing: Pricing = { ...base.pricing, ...savedPricing };
     const modules = {} as Record<ModuleId, ModuleSel>;
     AP_MODULES.forEach((m) => {
       pricing[m.id] = { ...base.pricing[m.id], ...(r.pricing[m.id] || {}) };
@@ -470,7 +444,8 @@ export function apLoad(raw: string | null): ApState {
     });
     pricing.pilots = pilots;
     const ids = AP_MODULES.map((m) => m.id);
-    const mode: Mode = r.sel.mode === "partner" || r.sel.mode === "pilot" ? r.sel.mode : "modular";
+    // A saved partnership selection (no longer offered) loads as Modular.
+    const mode: Mode = r.sel.mode === "pilot" ? "pilot" : "modular";
     return {
       sel: {
         mode,
